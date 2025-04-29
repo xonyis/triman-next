@@ -19,60 +19,24 @@ export default function Home() {
     const [currentTurn, setCurrentTurn] = useState("")
 
     const [currentPlayer, setCurrentPlayer] = useState("")
-    const [triman, setTriman] = useState<string>("null")
+    const [triman, setTriman] = useState("")
+    const [playAgain, setPlayAgain] = useState(false)
 
     const [gameMessage, setGameMessage] = useState("")
 
-    const messagesEndRef = useRef<HTMLDivElement>(null)
     // Animation pour les dés quand on clique sur Jouer
     const handleRoll = () => {
         setIsRolling(true)
         const newDe1 = Math.floor(Math.random() * 6) + 1
         const newDe2 = Math.floor(Math.random() * 6) + 1
+        console.log("current", playAgain)
+        socket.emit("dice-roll", { room, username, de1: newDe1, de2: newDe2, total: newDe1 + newDe2, trimanPlayer: triman, playAgain })
 
         setTimeout(() => {
-            socket.emit("dice-roll", { room, username, de1: newDe1, de2: newDe2, total: newDe1 + newDe2 })
-            setDe1(newDe1)
-            setDe2(newDe2)
             setIsRolling(false)
             setNbrTours(nbrTours+1)
-            // Utiliser le nextPlayer reçu du serveur
-            setCurrentTurn("En attente du prochain joueur...")
-
-
-
-            generateGameMessage(newDe1, newDe2, username,triman)
-
         }, 1000)
 
-    }
-    // Générer un message basé sur le résultat des dés
-    const generateGameMessage = (d1: number, d2: number, user:string, triman:string) => {
-        const total = d1 + d2
-        if (triman !== null) {
-            if (d1 === d2) {
-                setGameMessage(`Double ${d1}! ${user} distribue ${total} gorgées!`)
-            } else if (total === 3) {
-                setGameMessage(`${user} est triman et boit 1 gorgée pour fêter ça !`)
-            } else if (total === 7) {
-                setGameMessage(`${user} boit 1 gorgée et ton voisin de gauche boit 1 gorgée`)
-            } else if (total === 11) {
-                setGameMessage(`Tout le monde boit 1 gorgée!`)
-            } else if (total === 2) {
-                setGameMessage(`${user} boit 2 gorgées!`)
-            } else if (total === 12) {
-                setGameMessage(`${user} distribue 6 gorgées!`)
-            } else {
-                setGameMessage(`${user} a fait ${total}. Rien ne se passe.`)
-                setTriman("null")
-            }
-        } else {
-            setGameMessage(`${user} a fait ${total}. On cheche un triman.`)
-            if (total === 3 || d1 === 3 || d1 === 3) {
-                setTriman(user)
-            }
-
-        }
     }
 
     // Fonction pour obtenir l'icône de dé correspondant à la valeur
@@ -87,9 +51,7 @@ export default function Home() {
         ]
         return icons[value - 1] || icons[0]
     }
-    const handleSendMessage = (message:string) => {
-        console.log(message)
-    }
+
 
     const handleJoinRoom = () => {
         if (room && username) {
@@ -100,45 +62,92 @@ export default function Home() {
         }
     }
 
+    const getRules = (d1:number, d2:number, total: number, player: string, triman: string, nextPlayer: string) => {
+        if (!triman) {
+
+            if (d1=== 3 || d2=== 3 ||total=== 3) {
+                setTriman(player)
+                setGameMessage(`${player} est triman! il boit pour feter cela !`)
+            } else {
+                setGameMessage(`${player} a fait ${total}, on cherche un triman`)
+            }
+            setCurrentTurn(nextPlayer)
+            setPlayAgain(false)
+        } else {
+
+            if (d1 === d2) {
+                setCurrentTurn(player)
+                setPlayAgain(true)
+                if (d1=== 3 || d2=== 3) {
+                    setGameMessage(`Double ${d1}! ${player} distribue ${d1} gorgées! Le triman aussi prend une gorgée!`)
+                }else {
+                    setGameMessage(`Double ${d1}! ${player} distribue ${d1} gorgées!`)
+                }
+            } else if (total === 9) {
+                setCurrentTurn(player)
+                setPlayAgain(true)
+                if (d1=== 3 || d2=== 3) {
+                    setGameMessage(`${player}, ton voisin de gauche boit 1 gorgée! Le triman aussi prend une gorgée!`)
+                }else {
+                    setGameMessage(`${player}, ton voisin de gauche boit 1 gorgée!`)
+                }
+            } else if (total === 11) {
+                setCurrentTurn(player)
+                setPlayAgain(false)
+                if (d1=== 3 || d2=== 3) {
+                    setGameMessage(`${player}, ton voisin de droite boit 1 gorgée! Le triman aussi prend une gorgée!`)
+                }else {
+                    setGameMessage(`${player}, ton voisin de droite boit 1 gorgée!`)
+                }
+            } else if (total === 10) {
+                setCurrentTurn(player)
+                setPlayAgain(true)
+                if (d1=== 3 || d2=== 3) {
+                    setGameMessage(`${player} tu boit 1 gorgée! Le triman aussi prend une gorgée!`)
+                }else {
+                    setGameMessage(`${player} tu boit 1 gorgée!`)
+                }
+            } else if (total === 3 || d1=== 3 || d2=== 3) {
+                setCurrentTurn(player)
+                setPlayAgain(true)
+                setGameMessage(`${triman} tu boit 1 gorgée!`)
+            } else {
+                setCurrentTurn(nextPlayer)
+                if (triman === player) {
+                    setTriman("")
+                    setPlayAgain(false)
+                    setGameMessage(`Rien ne se passe. On reset le triman`)
+                } else {
+                    setCurrentTurn(nextPlayer)
+                    setPlayAgain(false)
+                    setGameMessage(`${player} a fait ${total}. Rien ne se passe.`)
+                }
+            }
+        }
+    }
+
     useEffect(() => {
         socket.on("message", (data) => {
-
             setMessages((prev) => [...prev,data])
         })
 
-
         socket.on("user_joined", (message) => {
-
             setMessages((prev) => [...prev, {sender: "system", message}])
         })
 
         socket.on("dice-roll-result", (data) => {
-            if (data.username !== username) {
-                setDe1(data.de1)
-                setDe2(data.de2)
-                setCurrentPlayer(data.username)
-                // Utiliser le nextPlayer reçu du serveur
+            console.log(data)
+            setDe1(data.de1)
+            setDe2(data.de2)
+            const total = data.de1 + data.de2
+            getRules(data.de1, data.de2, total, data.username, data.trimanPlayer, data.nextPlayer )
 
-                if (data.nextPlayer) {
 
-                    // Si le prochain joueur est l'utilisateur actuel, c'est son tour
-                    if (data.nextPlayer === username) {
-                        console.log(`C'est à votre tour !`)
-
-                        setCurrentTurn(`C'est à votre tour !`)
-                    } else {
-                        console.log(`C'est au tour de ${data.nextPlayer}.`)
-
-                        setCurrentTurn(`C'est au tour de ${data.nextPlayer}.`)
-                    }
-                }
-                generateGameMessage(data.de1, data.de2, data.username, triman)
-            }
         })
 
         socket.on("player_list", (players) => {
             console.log("Liste des joueurs:", players)
-
+            setCurrentTurn(players[0])
         })
 
 
@@ -209,7 +218,7 @@ export default function Home() {
                                       {triman ? (
                                               <>
                                                 <Beer className="w-6 h-6 text-red-600"/>
-                                                <p className="text-md font-bold text-red-600">sss</p>
+                                                <p className="text-md font-bold text-red-600">{triman}</p>
                                               </>
                                           ) : (
                                             <>
@@ -298,7 +307,7 @@ export default function Home() {
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.5, delay: 0.5 }}
                           >
-                              {currentPlayer ? (
+                              {currentTurn === username ? (
                                   <motion.button
                                       className="w-full h-full bg-gradient-to-br from-emerald-500 to-green-600 rounded-3xl p-3 shadow-lg flex items-center justify-center gap-4 hover:from-emerald-600 hover:to-green-700 transition-all"
                                       whileTap={{scale: 0.95}}

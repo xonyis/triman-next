@@ -58,7 +58,7 @@ app.prepare().then(() => {
         })
 
         // Quand un utilisateur lance les dés
-        socket.on("dice-roll", ({ room, username, de1, de2, total, isTrimanMode, trimanPlayer, hasEffect, playAgain, resetTriman }) => {
+        socket.on("dice-roll", ({ room, username, de1, de2, total, isTrimanMode, trimanPlayer, hasEffect, playAgain, resetTriman, nextTurn }) => {
             console.log(`from ${username} on ${room} score: ${de1} + ${de2} = ${total}`)
 
             if (rooms[room]) {
@@ -111,9 +111,17 @@ app.prepare().then(() => {
 
                 // Émettre également au lanceur pour qu'il sache qui est le prochain
                 socket.emit("dice-roll-result", {
+                    room,
+                    username,
+                    de1,
+                    de2,
+                    total,
                     nextPlayer,
                     isTrimanMode: rooms[room].isTrimanMode,
-                    trimanPlayer: rooms[room].trimanPlayer
+                    trimanPlayer: rooms[room].trimanPlayer,
+                    playAgain,
+                    resetTriman,
+                    nextTurn
                 })
             }
         })
