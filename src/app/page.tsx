@@ -40,12 +40,12 @@ export default function Home() {
     // Fonction pour obtenir l'icône de dé correspondant à la valeur
     const getDiceIcon = (value: number) => {
         const icons = [
-            <Dice1 key={1} className="w-16 h-16" />,
-            <Dice2 key={2} className="w-16 h-16" />,
-            <Dice3 key={3} className="w-16 h-16" />,
-            <Dice4 key={4} className="w-16 h-16" />,
-            <Dice5 key={5} className="w-16 h-16" />,
-            <Dice6 key={6} className="w-16 h-16" />,
+            <Dice1 key={1} className="w-12 h-12 sm:w-16 sm:h-16" />,
+            <Dice2 key={2} className="w-12 h-12 sm:w-16 sm:h-16" />,
+            <Dice3 key={3} className="w-12 h-12 sm:w-16 sm:h-16" />,
+            <Dice4 key={4} className="w-12 h-12 sm:w-16 sm:h-16" />,
+            <Dice5 key={5} className="w-12 h-12 sm:w-16 sm:h-16" />,
+            <Dice6 key={6} className="w-12 h-12 sm:w-16 sm:h-16" />,
         ]
         return icons[value - 1] || icons[0]
     }
@@ -200,58 +200,58 @@ export default function Home() {
               </div>
           ) : (
               <div className="w-full max-w-screen mx-auto">
-                  <div className="h-screen w-screen mx-auto overflow-y-auto mb-4 bg-neutral-900 ">
+                  <div className="min-h-screen w-full mx-auto overflow-y-auto bg-neutral-900">
 
-                      <div className="grid grid-cols-2 grid-rows-5 gap-4  h-full">
+                      <div className="grid grid-cols-2 grid-rows-[auto_1fr_1fr_auto_auto] gap-2 sm:gap-4 h-full p-2 sm:p-4">
                           {/* Section du joueur actuel */}
                           <motion.div
-                              className="col-span-2 p-4 pb-0"
+                              className="col-span-2 p-2 sm:p-4 mb-0 mt-2 py-0"
                               initial={{opacity: 0, y: -20}}
                               animate={{opacity: 1, y: 0}}
                               transition={{duration: 0.5}}
                           >
                               <div
-                                  className="w-full h-full flex justify-between flex-col bg-gradient-to-br from-amber-400 to-amber-500 rounded-3xl p-6 pb-3 shadow-lg">
-                                  <div className="flex items-center gap-3">
+                                  className="w-full h-full flex justify-between flex-col bg-gradient-to-br from-amber-400 to-amber-500 rounded-xl sm:rounded-3xl p-3 sm:p-6 pb-2 sm:pb-3 shadow-lg">
+                                  <div className="flex items-center gap-1 sm:gap-2">
                                       {triman ? (
                                               <>
-                                                <Beer className="w-6 h-6 text-red-600"/>
-                                                <p className="text-md font-bold text-red-600">{triman}</p>
+                                                <Beer className="w-4 h-4 sm:w-6 sm:h-6 text-red-600"/>
+                                                <p className="text-sm sm:text-md font-bold text-red-600">{triman}</p>
                                               </>
                                           ) : (
                                             <>
-                                                <Beer className="w-6 h-6 text-white"/>
+                                                <Beer className="w-6 h-6 text-white animate-pulse"/>
                                                 <p className="text-md font-bold text-white">On cherche un triman</p>
                                             </>
                                           )
                                       }
                                   </div>
                                   <div className="h-full flex items-center justify-center py-1">
-                                      <p className="text-md font-extrabold text-white drop-shadow-md ">{gameMessage}</p>
+                                      <p className="text-xs sm:text-sm font-extrabold text-white drop-shadow-md text-center ">{gameMessage}</p>
                                   </div>
-                                  <div className="w-full   flex justify-between">
-                                      <div className="bg-white/30 flex  px-4 py-1 rounded-full">
+                                  <div className="w-full flex justify-between text-xs sm:text-sm">
+                                      <div className="bg-white/30 flex px-2 sm:px-4 py-1 sm:py-2 rounded-full">
 
-                                          <User className="w-6 h-6 text-white "/>
-                                          <p className="text-sm font-bold text-white"> {currentTurn}</p>
+                                          <User className="w-3 h-3 sm:w-4 sm:h-4 text-white mr-1"/>
+                                          <p className=" font-bold text-white "> {currentTurn}</p>
                                       </div>
-                                      <div className="bg-white/30 px-4 py-1 rounded-full">
-                                          <p className="text-sm font-bold text-white">Tour {nbrTours}</p>
+                                      <div className="bg-white/30 px-2 sm:px-4 py-1 sm:py-2 rounded-full">
+                                          <p className=" font-bold text-white">Tour {nbrTours}</p>
                                       </div>
                                   </div>
                               </div>
                           </motion.div>
                           {/* Dé 1 */}
                           <motion.div
-                              className="row-span-2 row-start-2 p-3 pr-2"
+                              className="row-span-2 row-start-2 p-2 sm:p-3"
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ duration: 0.5, delay: 0.2 }}
                           >
-                              <div className="w-full flex flex-col items-center justify-between h-full bg-gradient-to-br from-purple-600 to-indigo-700 rounded-3xl p-5 shadow-lg">
-                                  <p className="text-xl font-bold text-white/90 mb-2">Dé 1</p>
+                              <div className="w-full flex flex-col items-center justify-between h-full bg-gradient-to-br from-purple-600 to-indigo-700 rounded-xl sm:rounded-3xl p-3 sm:p-5 shadow-lg">
+                                  <p className="text-base sm:text-xl font-bold text-white/90 mb-1 sm:mb-2">Dé 1</p>
                                   <motion.div
-                                      className="w-32 h-32 bg-white rounded-2xl flex items-center justify-center shadow-inner"
+                                      className="w-20 h-20 sm:w-32 sm:h-32 bg-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-inner"
                                       animate={{
                                           rotate: isRolling ? [0, 360, 720, 1080] : 0,
                                           scale: isRolling ? [1, 0.8, 1.1, 1] : 1,
@@ -260,69 +260,69 @@ export default function Home() {
                                   >
                                       {getDiceIcon(de1)}
                                   </motion.div>
-                                  <div className="mt-4 bg-white/20 px-6 py-3 rounded-full">
-                                      <p className="text-3xl font-bold text-white">{de1}</p>
+                                  <div className="mt-2 sm:mt-4 bg-white/20 px-4 sm:px-6 py-2 sm:py-3 rounded-full">
+                                      <p className="text-xl sm:text-3xl font-bold text-white">{de1}</p>
                                   </div>
                               </div>
                           </motion.div>
                           {/* Dé 2 */}
                           <motion.div
-                              className="row-span-2 row-start-2 p-3 pr-2"
+                              className="row-span-2 row-start-2 p-2 sm:p-3"
                               initial={{ opacity: 0, x: -20 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ duration: 0.5, delay: 0.2 }}
                           >
-                              <div className="w-full flex flex-col items-center justify-between h-full bg-gradient-to-br from-purple-600 to-indigo-700 rounded-3xl p-5 shadow-lg">
-                                  <p className="text-xl font-bold text-white/90 mb-2">Dé 2</p>
+                              <div className="w-full flex flex-col items-center justify-between h-full bg-gradient-to-br from-blue-600 to-cyan-700 rounded-xl sm:rounded-3xl p-3 sm:p-5 shadow-lg">
+                                  <p className="text-base sm:text-xl font-bold text-white/90 mb-1 sm:mb-2">Dé 2</p>
                                   <motion.div
-                                      className="w-32 h-32 bg-white rounded-2xl flex items-center justify-center shadow-inner"
+                                      className="w-20 h-20 sm:w-32 sm:h-32 bg-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-inner"
                                       animate={{
-                                          rotate: isRolling ? [0, 360, 720, 1080] : 0,
+                                          rotate: isRolling ? [0, -360, -720, -1080] : 0,
                                           scale: isRolling ? [1, 0.8, 1.1, 1] : 1,
                                       }}
                                       transition={{ duration: 1, ease: "easeInOut" }}
                                   >
                                       {getDiceIcon(de2)}
                                   </motion.div>
-                                  <div className="mt-4 bg-white/20 px-6 py-3 rounded-full">
-                                      <p className="text-3xl font-bold text-white">{de2}</p>
+                                  <div className="mt-2 sm:mt-4 bg-white/20 px-4 sm:px-6 py-2 sm:py-3 rounded-full">
+                                      <p className="text-xl sm:text-3xl font-bold text-white">{de2}</p>
                                   </div>
                               </div>
                           </motion.div>
-                          <div className=" col-span-2 row-start-4 p-4 mb-1 pt-0">
-                              <div className="w-full max-h-full h-full flex flex-col bg-red-500 rounded-3xl p-4">
-                                  <p className="text-lg font-bold text-white">Total : </p>
+                          <div className=" col-span-2 row-start-4 p-2 sm:p-4 mb-0 sm:mb-1 pt-0">
+                              <div className="w-full max-h-full h-full flex flex-col bg-red-500 rounded-xl sm:rounded-3xl p-2 sm:p-4">
+                                  <p className="text-base sm:text-lg font-bold text-white">Total : </p>
                                   <div className="h-full flex justify-center items-center">
-                                      <p className="text-6xl font-bold text-white">{de2 + de1} </p>
+                                      <p className="text-4xl sm:text-6xl font-bold text-white">{de2 + de1} </p>
                                   </div>
                               </div>
                           </div>
 
                           {/* Bouton Jouer */}
                           <motion.div
-                              className="col-span-2 row-start-5 p-4 mb-3 pt-2"
+                              className="col-span-2 row-start-5 p-2 sm:p-4 mb-3 pt-1 sm:pt-2"
                               initial={{ opacity: 0, y: 30 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.5, delay: 0.5 }}
                           >
                               {currentTurn === username ? (
                                   <motion.button
-                                      className="w-full h-full bg-gradient-to-br from-emerald-500 to-green-600 rounded-3xl p-3 shadow-lg flex items-center justify-center gap-4 hover:from-emerald-600 hover:to-green-700 transition-all"
+                                      className="w-full h-full bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl sm:rounded-3xl p-2 sm:p-3 shadow-lg flex items-center justify-center gap-2 sm:gap-4 hover:from-emerald-600 hover:to-green-700 transition-all"
                                       whileTap={{scale: 0.95}}
                                       onClick={handleRoll}
                                   >
 
-                                      <p className="text-4xl font-bold text-white">Lancer les dés</p>
-                                      <Dices className="w-8 h-8 text-white"/>
+                                      <p className="text-2xl sm:text-4xl font-bold text-white">Lancer les dés</p>
+                                      <Dices className="w-6 h-6 sm:w-8 sm:h-8 text-white"/>
                                   </motion.button>
                               ): (
                                   <motion.button
-                                      className="w-full h-full bg-gradient-to-br from-red-500 to-red-600 rounded-3xl p-3 shadow-lg flex items-center justify-center gap-4 hover:from-red-600 hover:to-red-700 transition-all"
+                                      className="w-full h-full bg-gradient-to-br from-red-500 to-red-600 rounded-xl sm:rounded-3xl p-2 sm:p-3 shadow-lg flex items-center justify-center gap-2 sm:gap-4 hover:from-red-600 hover:to-red-700 transition-all"
 
                                   >
 
-                                      <p className="text-4xl font-bold text-white">Lancer les dés</p>
-                                      <Dices className="w-8 h-8 text-white"/>
+                                      <p className="text-2xl sm:text-4xl font-bold text-white">Lancer les dés</p>
+                                      <Dices className="w-6 h-6 sm:w-8 sm:h-8 text-white"/>
                                   </motion.button>
                               )}
                           </motion.div>
