@@ -3,7 +3,7 @@ import next from 'next'
 import { Server } from "socket.io"
 
 const dev = process.env.NODE_ENV !== "production"
-const hostname = process.env.HOSTNAME || "localhost"
+const hostname = process.env.HOSTNAME || "46.202.153.153"
 const port = parseInt(process.env.PORT || "3000", 10)
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler()
@@ -20,7 +20,16 @@ const rooms: {
 
 app.prepare().then(() => {
     const httpServer = createServer(handle)
-    const io = new Server(httpServer)
+    const io = new Server(httpServer, {
+        cors: {
+            origin: "*", // Autoriser toutes les origines en développement
+            methods: ["GET", "POST"],
+            credentials: true
+        }
+    })
+
+
+
     io.on("connection", (socket) => {
         console.log(`a user connected: ${socket.id}`)
 
@@ -178,6 +187,6 @@ app.prepare().then(() => {
     })
 
     httpServer.listen(port, () => {
-        console.log(`Server running on : http://${hostname}:${port}`)
+        console.log(`Server running on : http://46.202.153.153:${port}`)
     })
 })
