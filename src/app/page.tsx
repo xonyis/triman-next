@@ -1,18 +1,16 @@
 "use client"
-import ChatForm from "@/components/chat-form";
-import {useEffect, useRef, useState} from "react";
-import ChatMessage from "@/components/ChatMessage";
+import {useEffect, useState} from "react";
 import {socket} from "@/lib/socketClient";
-import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Trophy, Beer, User, Dices  } from "lucide-react"
-import {motion, number} from "framer-motion"
+import { Dice1, Dice2, Dice3, Dice4, Dice5, Dice6, Beer, User, Dices  } from "lucide-react"
+import {motion} from "framer-motion"
 
 export default function Home() {
-    const [messages, setMessages] = useState<{sender : string, message:string}[]>([]);
+    // const [messages, setMessages] = useState<{sender : string, message:string}[]>([]);
     const [room, setRoom] = useState("")
     const [joinded, setJoined] = useState(false)
     const [username, setUserName] = useState("")
     const [isRolling, setIsRolling] = useState(false)
-    const [isTriman, setIsTriman] = useState(false)
+    // const [isTriman, setIsTriman] = useState(false)
     const [de1, setDe1] = useState<number>(0)
     const [de2, setDe2] = useState<number>(0)
     const [nbrTours, setNbrTours] = useState<number>(0)
@@ -58,7 +56,7 @@ export default function Home() {
             socket.emit("join-room", {room, username: username})
             setJoined(true)
             setCurrentPlayer(username)
-
+            console.log(currentPlayer)
         }
     }
 
@@ -127,13 +125,13 @@ export default function Home() {
     }
 
     useEffect(() => {
-        socket.on("message", (data) => {
-            setMessages((prev) => [...prev,data])
-        })
-
-        socket.on("user_joined", (message) => {
-            setMessages((prev) => [...prev, {sender: "system", message}])
-        })
+        // socket.on("message", (data) => {
+        //     setMessages((prev) => [...prev,data])
+        // })
+        //
+        // socket.on("user_joined", (message) => {
+        //     setMessages((prev) => [...prev, {sender: "system", message}])
+        // })
 
         socket.on("dice-roll-result", (data) => {
             console.log(data)

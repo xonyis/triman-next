@@ -7,9 +7,9 @@ interface ChatMessageProps {
 }
 export default function ChatMessage({sender,message, isOwnMessage}: ChatMessageProps) {
     const isSystemMessage = sender === "system"
-    const handleSendMessage = (message:string) => {
-        console.log(message)
-    }
+    // const handleSendMessage = (message:string) => {
+    //     console.log(message)
+    // }
     return (
         <div className={`flex  ${
             isSystemMessage 
