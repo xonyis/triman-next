@@ -187,6 +187,6 @@ app.prepare().then(() => {
     })
 
     httpServer.listen(port, () => {
-        console.log(`Server running on : http://46.202.153.153:${port}`)
+        console.log(`Server running on : http://${hostname}:${port}`)
     })
 })
