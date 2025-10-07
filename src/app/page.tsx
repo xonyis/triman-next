@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useSearchParams, useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import { Trash2 } from "lucide-react";
+import { Share } from "lucide-react";
 
 type Player = { id: string; name: string };
 type Phase = "search" | "play";
@@ -547,12 +548,14 @@ function HomeInner() {
                     className="rounded-md border border-black/10 dark:border-white/15 px-2 py-1 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800"
                     onClick={handleShare}
                   >
-                    Partager
+                  <Share size={18} className=" " />
+
                   </button>
                 )}
                 <button
                   className="rounded-md border border-black/10 dark:border-white/15 px-2 py-1 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800"
                   onClick={handleCopyLink}
+                  style={{fontSize: "14px"}}
                 >
                   {copyOk ? "Lien copié" : "Copier le lien"}
                 </button>
@@ -623,7 +626,7 @@ function HomeInner() {
             )}
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mt-2">
-              <span className="text-xs text-neutral-600">
+              <span className="text-xs text-neutral-400">
                 {localPlayer ? `Mon joueur: ${localPlayer.name}` : "Aucun joueur revendiqué"}
               </span>
               <button
@@ -639,7 +642,7 @@ function HomeInner() {
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-              <span className="text-sm text-neutral-600">{players.length} joueur(s)</span>
+              <span className="text-sm text-neutral-400">{players.length} joueur(s)</span>
               <button
                 className="touch-target rounded-md bg-green-600 text-white px-3 sm:px-4 py-2 font-semibold hover:bg-green-700 disabled:opacity-50 w-full sm:w-auto"
                 onClick={startGame}
