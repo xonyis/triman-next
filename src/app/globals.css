@@ -22,5 +22,37 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+/* Mobile-first utilities (non-invasives) */
+.container-responsive {
+  width: 100%;
+  max-width: 560px; /* tighter for very small devices */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Fluid typography for very small widths */
+@media (max-width: 360px) {
+  h1 { font-size: 1.6rem; }
+  h2 { font-size: 1rem; }
+  .text-sm { font-size: 0.8rem; }
+}
+
+@media (max-width: 320px) {
+  h1 { font-size: 1.4rem; }
+  h2 { font-size: 0.95rem; }
+  .text-sm { font-size: 0.75rem; }
 }

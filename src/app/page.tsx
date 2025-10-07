@@ -414,21 +414,21 @@ function HomeInner() {
   }
 
   return (
-    <div className="font-sans min-h-screen p-6 sm:p-10 bg-gradient-to-b from-pink-50 to-purple-100 dark:from-neutral-900 dark:to-neutral-950 text-neutral-900 dark:text-neutral-100">
-      <main className="max-w-xl mx-auto w-full flex flex-col gap-6">
+    <div className="font-sans min-h-screen p-4 sm:p-6 md:p-8 bg-gradient-to-b from-pink-50 to-purple-100 dark:from-neutral-900 dark:to-neutral-950 text-neutral-900 dark:text-neutral-100">
+      <main className="container-responsive w-full flex flex-col gap-5 sm:gap-6 overflow-x-hidden">
         <h1 className="text-3xl font-extrabold tracking-tight text-center">Triman</h1>
 
-        <section className="rounded-xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur p-4 sm:p-5 flex flex-col gap-3">
+        <section className="rounded-xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur p-3 sm:p-4 md:p-5 flex flex-col gap-3">
           <h2 className="text-lg font-semibold">Salle</h2>
           <div className="flex gap-2 items-center">
             <input
-              className="flex-1 rounded-md border border-black/10 dark:border-white/15 bg-white dark:bg-neutral-900 px-3 py-2 outline-none"
+              className="flex-1 min-w-0 rounded-md border border-black/10 dark:border-white/15 bg-white dark:bg-neutral-900 px-3 py-2 outline-none text-sm sm:text-base ellipsis"
               placeholder="ID de la room (ex: party1)"
               value={roomInput}
               onChange={(e) => setRoomInput(e.target.value)}
             />
             <button
-              className="rounded-md border border-black/10 dark:border-white/15 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              className="touch-target rounded-md border border-black/10 dark:border-white/15 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 shrink-0"
               onClick={() => {
                 const id = roomInput.trim() || `room-${Math.random().toString(36).slice(2,8)}`;
                 router.push(`/?room=${encodeURIComponent(id)}`);
@@ -437,7 +437,7 @@ function HomeInner() {
               Rejoindre
             </button>
             <button
-              className="rounded-md bg-purple-600 text-white px-4 py-2 text-sm font-medium hover:bg-purple-700"
+              className="touch-target rounded-md bg-purple-600 text-white px-3 sm:px-4 py-2 text-sm font-medium hover:bg-purple-700 shrink-0"
               onClick={() => {
                 const id = `room-${Math.random().toString(36).slice(2,8)}`;
                 router.push(`/?room=${encodeURIComponent(id)}`);
@@ -465,11 +465,11 @@ function HomeInner() {
         </section>
 
         {!hasStarted ? (
-          <section className="rounded-xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur p-4 sm:p-5 flex flex-col gap-4">
+          <section className="rounded-xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur p-3 sm:p-4 md:p-5 flex flex-col gap-4">
             <h2 className="text-lg font-semibold">Joueurs</h2>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
-                className="flex-1 rounded-md border border-black/10 dark:border-white/15 bg-white dark:bg-neutral-900 px-3 py-2 outline-none focus:ring-2 focus:ring-purple-400"
+                className="flex-1 min-w-0 rounded-md border border-black/10 dark:border-white/15 bg-white dark:bg-neutral-900 px-3 py-2 outline-none focus:ring-2 focus:ring-purple-400 text-sm sm:text-base ellipsis"
                 placeholder="Pseudo du joueur"
                 value={newPlayerName}
                 onChange={(e) => setNewPlayerName(e.target.value)}
@@ -479,7 +479,7 @@ function HomeInner() {
                 disabled={!!localPlayerId}
               />
               <button
-                className="rounded-md bg-purple-600 text-white px-4 py-2 font-medium hover:bg-purple-700 disabled:opacity-50"
+                className="touch-target rounded-md bg-purple-600 text-white px-3 sm:px-4 py-2 font-medium hover:bg-purple-700 disabled:opacity-50 w-full sm:w-auto shrink-0"
                 onClick={addPlayer}
                 disabled={!newPlayerName.trim() || !!localPlayerId}
               >
@@ -493,14 +493,14 @@ function HomeInner() {
                   <li key={p.id} className="flex items-center gap-2">
                     <span className="text-sm text-neutral-500 w-6 text-right">{idx + 1}.</span>
                     <input
-                      className="flex-1 rounded-md border border-black/10 dark:border-white/15 bg-white dark:bg-neutral-900 px-3 py-2 outline-none"
+                      className="flex-1 min-w-0 rounded-md border border-black/10 dark:border-white/15 bg-white dark:bg-neutral-900 px-3 py-2 outline-none text-sm sm:text-base"
                       value={p.name}
                       onChange={(e) => updatePlayerName(p.id, e.target.value)}
                       disabled={p.id !== localPlayerId}
                     />
                     {p.id !== localPlayerId && (
                       <button
-                        className="text-xs px-2 py-1 rounded-md border border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        className="text-xs px-2 py-1 rounded-md border border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 shrink-0"
                         onClick={() => claimPlayer(p)}
                         aria-label={`Assigner ${p.name} à cet appareil`}
                       >
@@ -508,7 +508,7 @@ function HomeInner() {
                       </button>
                     )}
                     <button
-                      className="text-xs px-2 py-1 rounded-md border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      className="text-xs px-2 py-1 rounded-md border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 shrink-0"
                       onClick={() => removePlayer(p.id)}
                       aria-label={`Supprimer ${p.name}`}
                       disabled={p.id !== localPlayerId}
@@ -520,12 +520,12 @@ function HomeInner() {
               </ul>
             )}
 
-            <div className="flex items-center justify-between mt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mt-2">
               <span className="text-xs text-neutral-600">
                 {localPlayer ? `Mon joueur: ${localPlayer.name}` : "Aucun joueur revendiqué"}
               </span>
               <button
-                className="text-xs px-2 py-1 rounded-md border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                className="touch-target text-xs px-2 py-1 rounded-md border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 w-full sm:w-auto"
                 onClick={() => {
                   if (localPlayerId) removePlayer(localPlayerId);
                 }}
@@ -535,10 +535,10 @@ function HomeInner() {
               </button>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
               <span className="text-sm text-neutral-600">{players.length} joueur(s)</span>
               <button
-                className="rounded-md bg-green-600 text-white px-4 py-2 font-semibold hover:bg-green-700 disabled:opacity-50"
+                className="touch-target rounded-md bg-green-600 text-white px-3 sm:px-4 py-2 font-semibold hover:bg-green-700 disabled:opacity-50 w-full sm:w-auto"
                 onClick={startGame}
                 disabled={players.length < 2}
               >
@@ -569,7 +569,7 @@ function HomeInner() {
                 <div className="text-3xl font-extrabold mt-1">{dice ? dice[0] : "-"}</div>
               </div>
               <button
-                className="col-span-1 rounded-lg bg-purple-600 text-white px-4 py-3 font-bold text-sm hover:bg-purple-700 disabled:opacity-50"
+                className="col-span-1 touch-target rounded-lg bg-purple-600 text-white px-4 py-3 font-bold text-sm hover:bg-purple-700 disabled:opacity-50"
                 onClick={rollDice}
                 disabled={!hasStarted || !localPlayerId || currentPlayer?.id !== localPlayerId}
               >
@@ -611,7 +611,7 @@ function HomeInner() {
 
             <div className="flex justify-end">
               <button
-                className="rounded-md border border-black/10 dark:border-white/15 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                className="touch-target rounded-md border border-black/10 dark:border-white/15 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
                 onClick={resetGame}
               >
                 Réinitialiser
