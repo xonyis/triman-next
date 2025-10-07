@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 
 type Player = { id: string; name: string };
@@ -29,6 +29,7 @@ function pluralizeGorgees(count: number): string {
 function HomeInner() {
   const searchParams = useSearchParams();
   const roomIdFromUrl = (searchParams?.get("room") as string | null) || "default";
+  const router = useRouter();
   const [players, setPlayers] = useState<Player[]>([]);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [hasStarted, setHasStarted] = useState(false);
@@ -40,6 +41,8 @@ function HomeInner() {
   const [dice, setDice] = useState<[number, number] | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
   const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
+  const localPlayerStoredRef = useRef<Player | null>(null);
+  const [roomInput, setRoomInput] = useState<string>("");
 
   // Socket.IO client
   const socketRef = useRef<Socket | null>(null);
@@ -55,6 +58,8 @@ function HomeInner() {
     dice: null,
     messages: [],
   });
+  // IDs récemment supprimés depuis cet appareil (pour éviter réapparition)
+  const suppressedIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -72,14 +77,27 @@ function HomeInner() {
       socket.on("connect", () => {
         socket.emit("room:join", roomIdFromUrl);
         socket.emit("state:request", { requesterId: socket.id });
+        // Si nous avons un joueur local (après refresh ou si seul dans la room), on le ré-annonce
+        const lp = localPlayerStoredRef.current;
+        if (lp && !suppressedIdsRef.current.has(lp.id)) {
+          setPlayers((prev) => (prev.some((p) => p.id === lp.id) ? prev : [...prev, lp]));
+          socket.emit("player:add", lp);
+        }
       });
 
       // Listeners: players
       socket.on("player:add", (payload: Player) => {
+        if (suppressedIdsRef.current.has(payload.id)) return; // ignore réapparition
         setPlayers((prev) => (prev.some((p) => p.id === payload.id) ? prev : [...prev, payload]));
       });
       socket.on("player:remove", (payload: { id: string }) => {
         setPlayers((prev) => prev.filter((p) => p.id !== payload.id));
+        if (payload.id === localPlayerId) {
+          // si suppression distante de mon joueur, on nettoie localement aussi
+          setLocalPlayerId(null);
+          localPlayerStoredRef.current = null;
+          try { localStorage.removeItem(`room:${roomIdFromUrl}:player`); } catch {}
+        }
       });
       socket.on("player:update", (payload: Player) => {
         setPlayers((prev) => prev.map((p) => (p.id === payload.id ? payload : p)));
@@ -127,7 +145,7 @@ function HomeInner() {
       // Merge: ensure we keep our local player if it's missing from incoming state
       const incomingPlayers = Array.isArray(s.players) ? s.players : [];
       let mergedPlayers = incomingPlayers;
-      if (localPlayerId) {
+      if (localPlayerId && !suppressedIdsRef.current.has(localPlayerId)) {
         const hasLocalInIncoming = incomingPlayers.some((p: Player) => p.id === localPlayerId);
         if (!hasLocalInIncoming) {
           const localInCurrent = stateRef.current.players.find((p) => p.id === localPlayerId);
@@ -137,6 +155,15 @@ function HomeInner() {
         }
       }
       setPlayers(mergedPlayers);
+      // Auto-claim sur mobile après refresh: si aucun joueur local, mais un joueur enregistré par nom existe dans la liste → on le revendique
+      if (!localPlayerId && localPlayerStoredRef.current) {
+        const byName = mergedPlayers.find((p) => p.name === localPlayerStoredRef.current!.name);
+        if (byName) {
+          setLocalPlayerId(byName.id);
+          localPlayerStoredRef.current = byName;
+          try { localStorage.setItem(`room:${roomIdFromUrl}:player`, JSON.stringify(byName)); } catch {}
+        }
+      }
         setHasStarted(!!s.hasStarted);
         setPhase(s.phase ?? "search");
         setTrimanIndex(s.trimanIndex ?? null);
@@ -159,14 +186,22 @@ function HomeInner() {
     };
   }, [roomIdFromUrl, localPlayerId]);
 
-  // Charger l'ID joueur local depuis localStorage pour cette room
+  // Charger le joueur local (id+name) depuis localStorage pour cette room
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(`room:${roomIdFromUrl}:playerId`);
-      setLocalPlayerId(stored || null);
+      const stored = localStorage.getItem(`room:${roomIdFromUrl}:player`);
+      if (stored) {
+        const parsed = JSON.parse(stored) as Player;
+        localPlayerStoredRef.current = parsed;
+        setLocalPlayerId(parsed.id);
+      } else {
+        localPlayerStoredRef.current = null;
+        setLocalPlayerId(null);
+      }
     } catch {
       setLocalPlayerId(null);
     }
+    setRoomInput(roomIdFromUrl || "");
   }, [roomIdFromUrl]);
 
   // Keep a stable ref to the latest applyRoll implementation
@@ -182,6 +217,10 @@ function HomeInner() {
     return players[trimanIndex] ?? null;
   }, [players, trimanIndex]);
 
+  const localPlayer = useMemo(() => {
+    return localPlayerId ? players.find((p) => p.id === localPlayerId) ?? null : null;
+  }, [players, localPlayerId]);
+
   function addPlayer() {
     const name = newPlayerName.trim();
     if (!name) return;
@@ -191,17 +230,20 @@ function HomeInner() {
     socketRef.current?.emit("player:add", newP);
     setNewPlayerName("");
     setLocalPlayerId(newP.id);
-    try { localStorage.setItem(`room:${roomIdFromUrl}:playerId`, newP.id); } catch {}
+    localPlayerStoredRef.current = newP;
+    try { localStorage.setItem(`room:${roomIdFromUrl}:player`, JSON.stringify(newP)); } catch {}
   }
 
   function removePlayer(id: string) {
     if (hasStarted) return; // on bloque la modification pendant la partie
     if (id !== localPlayerId) return; // ne peut supprimer que son propre joueur
+    suppressedIdsRef.current.add(id);
     setPlayers((prev) => prev.filter((p) => p.id !== id));
     socketRef.current?.emit("player:remove", { id });
     setCurrentIndex(0);
     setLocalPlayerId(null);
-    try { localStorage.removeItem(`room:${roomIdFromUrl}:playerId`); } catch {}
+    localPlayerStoredRef.current = null;
+    try { localStorage.removeItem(`room:${roomIdFromUrl}:player`); } catch {}
   }
 
   function updatePlayerName(id: string, name: string) {
@@ -209,6 +251,17 @@ function HomeInner() {
     if (id !== localPlayerId) return; // ne peut renommer que son propre joueur
     setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, name } : p)));
     socketRef.current?.emit("player:update", { id, name });
+    // persister le nom localement
+    if (localPlayerStoredRef.current && localPlayerStoredRef.current.id === id) {
+      localPlayerStoredRef.current = { ...localPlayerStoredRef.current, name };
+      try { localStorage.setItem(`room:${roomIdFromUrl}:player`, JSON.stringify(localPlayerStoredRef.current)); } catch {}
+    }
+  }
+
+  function claimPlayer(player: Player) {
+    setLocalPlayerId(player.id);
+    localPlayerStoredRef.current = player;
+    try { localStorage.setItem(`room:${roomIdFromUrl}:player`, JSON.stringify(player)); } catch {}
   }
 
   function resetGame() {
@@ -365,6 +418,52 @@ function HomeInner() {
       <main className="max-w-xl mx-auto w-full flex flex-col gap-6">
         <h1 className="text-3xl font-extrabold tracking-tight text-center">Triman</h1>
 
+        <section className="rounded-xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur p-4 sm:p-5 flex flex-col gap-3">
+          <h2 className="text-lg font-semibold">Salle</h2>
+          <div className="flex gap-2 items-center">
+            <input
+              className="flex-1 rounded-md border border-black/10 dark:border-white/15 bg-white dark:bg-neutral-900 px-3 py-2 outline-none"
+              placeholder="ID de la room (ex: party1)"
+              value={roomInput}
+              onChange={(e) => setRoomInput(e.target.value)}
+            />
+            <button
+              className="rounded-md border border-black/10 dark:border-white/15 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              onClick={() => {
+                const id = roomInput.trim() || `room-${Math.random().toString(36).slice(2,8)}`;
+                router.push(`/?room=${encodeURIComponent(id)}`);
+              }}
+            >
+              Rejoindre
+            </button>
+            <button
+              className="rounded-md bg-purple-600 text-white px-4 py-2 text-sm font-medium hover:bg-purple-700"
+              onClick={() => {
+                const id = `room-${Math.random().toString(36).slice(2,8)}`;
+                router.push(`/?room=${encodeURIComponent(id)}`);
+                setRoomInput(id);
+              }}
+            >
+              Créer
+            </button>
+          </div>
+          {roomIdFromUrl && (
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-neutral-600">Room actuelle: <span className="font-semibold">{roomIdFromUrl}</span></span>
+              <button
+                className="rounded-md border border-black/10 dark:border-white/15 px-2 py-1 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(`${location.origin}/?room=${encodeURIComponent(roomIdFromUrl)}`);
+                  } catch {}
+                }}
+              >
+                Copier le lien
+              </button>
+            </div>
+          )}
+        </section>
+
         {!hasStarted ? (
           <section className="rounded-xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur p-4 sm:p-5 flex flex-col gap-4">
             <h2 className="text-lg font-semibold">Joueurs</h2>
@@ -399,6 +498,15 @@ function HomeInner() {
                       onChange={(e) => updatePlayerName(p.id, e.target.value)}
                       disabled={p.id !== localPlayerId}
                     />
+                    {p.id !== localPlayerId && (
+                      <button
+                        className="text-xs px-2 py-1 rounded-md border border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                        onClick={() => claimPlayer(p)}
+                        aria-label={`Assigner ${p.name} à cet appareil`}
+                      >
+                        C&#39;est moi
+                      </button>
+                    )}
                     <button
                       className="text-xs px-2 py-1 rounded-md border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                       onClick={() => removePlayer(p.id)}
@@ -411,6 +519,21 @@ function HomeInner() {
                 ))}
               </ul>
             )}
+
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-xs text-neutral-600">
+                {localPlayer ? `Mon joueur: ${localPlayer.name}` : "Aucun joueur revendiqué"}
+              </span>
+              <button
+                className="text-xs px-2 py-1 rounded-md border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                onClick={() => {
+                  if (localPlayerId) removePlayer(localPlayerId);
+                }}
+                disabled={!localPlayerId}
+              >
+                Supprimer mon joueur
+              </button>
+            </div>
 
             <div className="flex items-center justify-between">
               <span className="text-sm text-neutral-600">{players.length} joueur(s)</span>
