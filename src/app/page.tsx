@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
+import { Trash2 } from "lucide-react";
 
 type Player = { id: string; name: string };
 type Phase = "search" | "play";
@@ -43,6 +44,10 @@ function HomeInner() {
   const [localPlayerId, setLocalPlayerId] = useState<string | null>(null);
   const localPlayerStoredRef = useRef<Player | null>(null);
   const [roomInput, setRoomInput] = useState<string>("");
+  const [canShare, setCanShare] = useState<boolean>(false);
+  const [copyOk, setCopyOk] = useState<boolean>(false);
+  const copyResetTimeoutRef = useRef<number | null>(null);
+  
 
   // Socket.IO client
   const socketRef = useRef<Socket | null>(null);
@@ -401,6 +406,92 @@ function HomeInner() {
     applyRollRef.current = applyRoll;
   }, [applyRoll]);
 
+  // URL de la room et capacités de partage
+  const roomUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return `${location.origin}/?room=${encodeURIComponent(roomIdFromUrl)}`;
+  }, [roomIdFromUrl]);
+
+  useEffect(() => {
+    try {
+      const hasNavigator = typeof navigator !== "undefined";
+      const supportsShare = hasNavigator && "share" in navigator;
+      const supportsCanShare = hasNavigator && "canShare" in navigator;
+      const secure = typeof window !== "undefined" ? window.isSecureContext : false;
+      let ok = supportsShare && secure;
+      // Si canShare existe, valide le partage d'une URL
+      if (ok && supportsCanShare) {
+        try {
+          ok = (navigator as Navigator & { canShare: (data: ShareData) => boolean }).canShare({ url: window.location?.href || "" });
+        } catch {
+          // ignore, garde ok
+        }
+      }
+      setCanShare(!!ok);
+    } catch {
+      setCanShare(false);
+    }
+  }, []);
+
+  // Nettoyage du timeout d'état "copié"
+  useEffect(() => {
+    return () => {
+      if (copyResetTimeoutRef.current) {
+        window.clearTimeout(copyResetTimeoutRef.current);
+        copyResetTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  async function copyTextToClipboard(text: string): Promise<boolean> {
+    // Tentative moderne
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fallback iOS/Android anciens: execCommand
+      try {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.setAttribute("readonly", "");
+        textarea.style.position = "fixed";
+        textarea.style.left = "-9999px";
+        document.body.appendChild(textarea);
+        textarea.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(textarea);
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+  }
+
+  const handleCopyLink = useCallback(async () => {
+    if (!roomUrl) return;
+    const ok = await copyTextToClipboard(roomUrl);
+    if (ok) {
+      setCopyOk(true);
+      if (copyResetTimeoutRef.current) window.clearTimeout(copyResetTimeoutRef.current);
+      copyResetTimeoutRef.current = window.setTimeout(() => {
+        setCopyOk(false);
+        copyResetTimeoutRef.current = null;
+      }, 2000);
+    }
+  }, [roomUrl]);
+
+  const handleShare = useCallback(() => {
+    if (!roomUrl) return;
+    if (typeof navigator === "undefined") return;
+    if ("share" in navigator) {
+      const navWithShare = navigator as Navigator & { share: (data: ShareData) => Promise<void> };
+      navWithShare
+        .share({ title: "Triman", text: "Rejoins ma salle Triman", url: roomUrl })
+        .catch(() => {});
+    }
+  }, [roomUrl]);
+  
+
   
 
   function rollDice() {
@@ -414,11 +505,11 @@ function HomeInner() {
   }
 
   return (
-    <div className="font-sans min-h-screen p-4 sm:p-6 md:p-8 bg-gradient-to-b from-pink-50 to-purple-100 dark:from-neutral-900 dark:to-neutral-950 text-neutral-900 dark:text-neutral-100">
+    <div className="font-sans min-h-screen p-4 sm:p-6 md:p-8 bg-transparent text-neutral-900 dark:text-neutral-100">
       <main className="container-responsive w-full flex flex-col gap-5 sm:gap-6 overflow-x-hidden">
         <h1 className="text-3xl font-extrabold tracking-tight text-center">Triman</h1>
 
-        <section className="rounded-xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur p-3 sm:p-4 md:p-5 flex flex-col gap-3">
+          <section className="rounded-xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur p-3 sm:p-4 md:p-5 flex flex-col gap-3">
           <h2 className="text-lg font-semibold">Salle</h2>
           <div className="flex gap-2 items-center">
             <input
@@ -449,17 +540,27 @@ function HomeInner() {
           </div>
           {roomIdFromUrl && (
             <div className="flex items-center justify-between text-sm">
-              <span className="text-neutral-600">Room actuelle: <span className="font-semibold">{roomIdFromUrl}</span></span>
-              <button
-                className="rounded-md border border-black/10 dark:border-white/15 px-2 py-1 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(`${location.origin}/?room=${encodeURIComponent(roomIdFromUrl)}`);
-                  } catch {}
-                }}
-              >
-                Copier le lien
-              </button>
+              <span className="text-neutral-400 ">Room actuelle: <span className="font-semibold">{roomIdFromUrl}</span></span>
+              <div className="flex items-center gap-2">
+                {canShare && (
+                  <button
+                    className="rounded-md border border-black/10 dark:border-white/15 px-2 py-1 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                    onClick={handleShare}
+                  >
+                    Partager
+                  </button>
+                )}
+                <button
+                  className="rounded-md border border-black/10 dark:border-white/15 px-2 py-1 text-xs hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  onClick={handleCopyLink}
+                >
+                  {copyOk ? "Lien copié" : "Copier le lien"}
+                </button>
+              </div>
+              {/* Annonce discrète pour lecteurs d'écran */}
+              <span className="sr-only" aria-live="polite" aria-atomic="true">
+                {copyOk ? "Lien copié dans le presse-papiers" : ""}
+              </span>
             </div>
           )}
         </section>
@@ -491,7 +592,7 @@ function HomeInner() {
               <ul className="flex flex-col gap-2">
                 {players.map((p, idx) => (
                   <li key={p.id} className="flex items-center gap-2">
-                    <span className="text-sm text-neutral-500 w-6 text-right">{idx + 1}.</span>
+                    <span className="text-sm text-neutral-400 font-bold w-6 text-right">{idx + 1}.</span>
                     <input
                       className="flex-1 min-w-0 rounded-md border border-black/10 dark:border-white/15 bg-white dark:bg-neutral-900 px-3 py-2 outline-none text-sm sm:text-base"
                       value={p.name}
@@ -508,12 +609,13 @@ function HomeInner() {
                       </button>
                     )}
                     <button
-                      className="text-xs px-2 py-1 rounded-md border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 shrink-0"
+                      className="touch-target rounded-md  bg-red-700 text-white p-2 sm:p-2.5 shadow hover:bg-red-800 active:scale-[0.99] transition disabled:opacity-50 disabled:cursor-not-allowed shrink-0 flex items-center justify-center"
                       onClick={() => removePlayer(p.id)}
                       aria-label={`Supprimer ${p.name}`}
                       disabled={p.id !== localPlayerId}
                     >
-                      Supprimer
+                      <Trash2 size={16} className="sm:hidden" />
+                      <Trash2 size={18} className="hidden sm:block " />
                     </button>
                   </li>
                 ))}
@@ -525,13 +627,14 @@ function HomeInner() {
                 {localPlayer ? `Mon joueur: ${localPlayer.name}` : "Aucun joueur revendiqué"}
               </span>
               <button
-                className="touch-target text-xs px-2 py-1 rounded-md border border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 w-full sm:w-auto"
+                className="touch-target rounded-md bg-red-700 text-white px-3 py-2 text-xs sm:text-sm font-medium shadow hover:bg-red-800 active:scale-[0.99] transition disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto inline-flex items-center gap-2 justify-center"
                 onClick={() => {
                   if (localPlayerId) removePlayer(localPlayerId);
                 }}
                 disabled={!localPlayerId}
               >
-                Supprimer mon joueur
+                <Trash2 size={16} />
+                <span className="hidden sm:inline">Supprimer mon joueur</span>
               </button>
             </div>
 
@@ -550,22 +653,22 @@ function HomeInner() {
           <section className="rounded-xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur p-4 sm:p-5 flex flex-col gap-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex flex-col">
-                <span className="text-xs uppercase tracking-wide text-neutral-500">Phase</span>
+                <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Phase</span>
                 <span className="font-semibold">{phase === "search" ? "Phase 1 · Recherche du Triman" : "Phase 2 · Jeu avec le Triman"}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs uppercase tracking-wide text-neutral-500">Triman</span>
+                <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Triman</span>
                 <span className="font-semibold">{triman ? triman.name : "À trouver"}</span>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs uppercase tracking-wide text-neutral-500">Joueur actuel</span>
+                <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Joueur actuel</span>
                 <span className="font-semibold">{currentPlayer?.name}</span>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-3 items-center">
               <div className="col-span-1 text-center">
-                <span className="text-xs uppercase tracking-wide text-neutral-500">Dé 1</span>
+                <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Dé 1</span>
                 <div className="text-3xl font-extrabold mt-1">{dice ? dice[0] : "-"}</div>
               </div>
               <button
@@ -576,12 +679,12 @@ function HomeInner() {
                 Lancer les dés
               </button>
               <div className="col-span-1 text-center">
-                <span className="text-xs uppercase tracking-wide text-neutral-500">Dé 2</span>
+                <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Dé 2</span>
                 <div className="text-3xl font-extrabold mt-1">{dice ? dice[1] : "-"}</div>
               </div>
             </div>
 
-            <div className="rounded-md bg-neutral-100 dark:bg-neutral-800 p-3">
+            <div className="glass-card p-3">
               <h3 className="text-sm font-semibold mb-2">Résultat</h3>
               <ul className="list-disc pl-5 text-sm flex flex-col gap-1">
                 {messages.map((m, i) => (
@@ -590,7 +693,7 @@ function HomeInner() {
               </ul>
             </div>
 
-            <div className="rounded-md bg-neutral-50 dark:bg-neutral-900 border border-black/10 dark:border-white/10 p-3">
+            <div className="glass-card p-3">
               <h3 className="text-sm font-semibold mb-2">Ordre des joueurs</h3>
               <ul className="flex flex-wrap gap-2">
                 {players.map((p, idx) => {
@@ -620,7 +723,7 @@ function HomeInner() {
           </section>
         )}
 
-        <footer className="text-center text-xs text-neutral-500 mt-2">
+        <footer className="text-center text-xs text-neutral-400 font-bold mt-2">
           Idéal sur mobile. Jouez responsable 🥂
         </footer>
       </main>
