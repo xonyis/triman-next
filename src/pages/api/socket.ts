@@ -1,7 +1,7 @@
 import type { NextApiRequest } from "next";
 import type { Server as HTTPServer } from "http";
 import type { Socket } from "net";
-import type { Server as IOServer, Socket as IOSocket } from "socket.io";
+import { Server as IOServer, Socket as IOSocket } from "socket.io";
 
 // Reuse the same Socket.IO server instance across hot reloads in dev
 interface SocketServer extends HTTPServer {
@@ -10,14 +10,13 @@ interface SocketServer extends HTTPServer {
 
 type NextApiResponseWithSocket = {
   socket: Socket & { server: SocketServer };
-  end: (msg?: any) => void;
+  end: (msg?: string) => void;
 };
 
 export default function handler(_req: NextApiRequest, res: NextApiResponseWithSocket) {
   const httpServer = res.socket.server as SocketServer;
   if (!httpServer.io) {
-    const { Server } = require("socket.io");
-    const io: IOServer = new Server(httpServer, {
+    const io: IOServer = new IOServer(httpServer, {
       path: "/api/socketio",
       cors: { origin: "*" },
     });
@@ -35,7 +34,7 @@ export default function handler(_req: NextApiRequest, res: NextApiResponseWithSo
       });
 
       const relayToRoom = (event: string) => {
-        socket.on(event, (payload: any) => {
+        socket.on(event, (payload: unknown) => {
           if (currentRoom) {
             socket.to(currentRoom).emit(event, payload);
           } else {
@@ -61,15 +60,12 @@ export default function handler(_req: NextApiRequest, res: NextApiResponseWithSo
         }
       });
 
-      socket.on(
-        "state:update",
-        (payload: { to: string; state: any }) => {
-          const { to, state } = payload || {};
-          if (to) {
-            socket.to(to).emit("state:update", { state });
-          }
+      socket.on("state:update", (payload: { to: string; state: unknown }) => {
+        const { to, state } = payload || {};
+        if (to) {
+          socket.to(to).emit("state:update", { state });
         }
-      );
+      });
     });
 
     httpServer.io = io;

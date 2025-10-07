@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 
@@ -26,7 +26,7 @@ function pluralizeGorgees(count: number): string {
   return `gorgée${count > 1 ? "s" : ""}`;
 }
 
-export default function Home() {
+function HomeInner() {
   const searchParams = useSearchParams();
   const roomIdFromUrl = (searchParams?.get("room") as string | null) || "default";
   const [players, setPlayers] = useState<Player[]>([]);
@@ -124,7 +124,19 @@ export default function Home() {
       socket.on("state:update", (payload: { state: GameState }) => {
         const s = payload?.state;
         if (!s) return;
-        setPlayers(s.players ?? []);
+      // Merge: ensure we keep our local player if it's missing from incoming state
+      const incomingPlayers = Array.isArray(s.players) ? s.players : [];
+      let mergedPlayers = incomingPlayers;
+      if (localPlayerId) {
+        const hasLocalInIncoming = incomingPlayers.some((p: Player) => p.id === localPlayerId);
+        if (!hasLocalInIncoming) {
+          const localInCurrent = stateRef.current.players.find((p) => p.id === localPlayerId);
+          if (localInCurrent) {
+            mergedPlayers = [...incomingPlayers, localInCurrent];
+          }
+        }
+      }
+      setPlayers(mergedPlayers);
         setHasStarted(!!s.hasStarted);
         setPhase(s.phase ?? "search");
         setTrimanIndex(s.trimanIndex ?? null);
@@ -133,11 +145,6 @@ export default function Home() {
         setRoundCursor(s.roundCursor ?? 0);
         setDice(s.dice ?? null);
         setMessages(s.messages ?? []);
-        // si notre joueur a disparu (ex: room changée), on débloque la création
-        if (localPlayerId && !(s.players ?? []).some((p: Player) => p.id === localPlayerId)) {
-          setLocalPlayerId(null);
-          try { localStorage.removeItem(`room:${roomIdFromUrl}:playerId`); } catch {}
-        }
       });
     };
     setup();
@@ -495,5 +502,13 @@ export default function Home() {
         </footer>
       </main>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeInner />
+    </Suspense>
   );
 }
