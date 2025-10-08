@@ -51,6 +51,7 @@ export default function handler(_req: NextApiRequest, res: NextApiResponseWithSo
         "game:start",
         "game:reset",
         "dice:roll",
+        "dice:animate",
       ].forEach(relayToRoom);
 
       // State sync: request -> others in room; update -> target socket only

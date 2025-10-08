@@ -28,6 +28,86 @@ function pluralizeGorgees(count: number): string {
   return `gorgée${count > 1 ? "s" : ""}`;
 }
 
+// Composant d'animation de dés avec changement de valeurs
+function AnimatedDice({ value, isAnimating, delay = 0 }: { value: number | null; isAnimating: boolean; delay?: number }) {
+  const [displayValue, setDisplayValue] = useState<number>(1);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Nettoyer les animations précédentes
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    if (value === null) {
+      setDisplayValue(1);
+      return;
+    }
+
+    if (!isAnimating) {
+      setDisplayValue(value);
+      return;
+    }
+
+    // Démarrer l'animation après le délai
+    const startAnimation = () => {
+      // Intervalle pour changer les valeurs rapidement
+      intervalRef.current = setInterval(() => {
+        const randomValue = Math.floor(Math.random() * 6) + 1;
+        setDisplayValue(randomValue);
+      }, 50);
+
+      // Arrêter l'animation et afficher la vraie valeur après 1.5s
+      timeoutRef.current = setTimeout(() => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        setDisplayValue(value);
+      }, 1000);
+    };
+
+    // Démarrer l'animation avec le délai
+    if (delay > 0) {
+      timeoutRef.current = setTimeout(startAnimation, delay);
+    } else {
+      startAnimation();
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [value, isAnimating, delay]);
+
+  return (
+    <div 
+      className="relative w-16 h-16 bg-white border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center text-2xl font-bold"
+      style={{
+        color: isAnimating ? '#1f2937' : '#1f2937',
+        // color: isAnimating
+        //   ? `rgb(${Math.floor(128 + 127 * Math.sin(Date.now() / 200))},${Math.floor(
+        //       128 + 127 * Math.sin(Date.now() / 200 + 2)
+        //     )},${Math.floor(128 + 127 * Math.sin(Date.now() / 200 + 4))})`
+        //   : '#1f2937',
+        transition: 'color 0.3s ease'
+      }}
+    >
+      <div className="text-3xl font-extrabold">
+        {displayValue}
+      </div>
+    </div>
+  );
+}
+
 function HomeInner() {
   const searchParams = useSearchParams();
   const roomIdFromUrl = (searchParams?.get("room") as string | null) || "default";
@@ -48,6 +128,8 @@ function HomeInner() {
   const [canShare, setCanShare] = useState<boolean>(false);
   const [copyOk, setCopyOk] = useState<boolean>(false);
   const copyResetTimeoutRef = useRef<number | null>(null);
+  const [isDiceAnimating, setIsDiceAnimating] = useState<boolean>(false);
+  const [diceAnimationId, setDiceAnimationId] = useState<string | null>(null);
   
 
   // Socket.IO client
@@ -133,8 +215,33 @@ function HomeInner() {
       });
 
       // Listeners: dice
-      socket.on("dice:roll", (payload: { d1: number; d2: number; meta?: string }) => {
-        applyRollRef.current(payload.d1, payload.d2);
+      socket.on("dice:roll", (payload: { d1: number; d2: number; meta?: string; animationId?: string }) => {
+        if (payload.animationId) {
+          setDiceAnimationId(payload.animationId);
+          setIsDiceAnimating(true);
+          // Démarrer l'animation avec un délai pour la synchronisation
+          setTimeout(() => {
+            applyRollRef.current(payload.d1, payload.d2);
+            // Arrêter l'animation après 1.5s
+            setTimeout(() => {
+              setIsDiceAnimating(false);
+              setDiceAnimationId(null);
+            }, 1000);
+          }, 100); // Petit délai pour synchroniser l'animation
+        } else {
+          applyRollRef.current(payload.d1, payload.d2);
+        }
+      });
+
+      // Listener pour l'animation de dés
+      socket.on("dice:animate", (payload: { animationId: string }) => {
+        setDiceAnimationId(payload.animationId);
+        setIsDiceAnimating(true);
+        // Arrêter l'animation après 1.5s
+        setTimeout(() => {
+          setIsDiceAnimating(false);
+          setDiceAnimationId(null);
+        }, 1000);
       });
 
       // State sync
@@ -499,10 +606,33 @@ function HomeInner() {
     if (!hasStarted || players.length < 2 || !currentPlayer) return;
     // Guard: seul le joueur courant peut lancer depuis ce client
     if (!localPlayerId || currentPlayer.id !== localPlayerId) return;
+    
     const d1 = Math.floor(Math.random() * 6) + 1;
     const d2 = Math.floor(Math.random() * 6) + 1;
-    socketRef.current?.emit("dice:roll", { d1, d2 });
-    applyRoll(d1, d2);
+    const animationId = `dice-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    
+    console.log('🎲 Démarrage animation:', { animationId, d1, d2 });
+    
+    // Démarrer l'animation localement
+    setDiceAnimationId(animationId);
+    setIsDiceAnimating(true);
+    
+    // Envoyer l'animation à tous les joueurs
+    socketRef.current?.emit("dice:animate", { animationId });
+    
+    // Envoyer le résultat après un délai pour synchroniser avec l'animation
+    setTimeout(() => {
+      console.log('🎲 Envoi résultat:', { d1, d2 });
+      socketRef.current?.emit("dice:roll", { d1, d2, animationId });
+      applyRoll(d1, d2);
+      
+      // Arrêter l'animation après 1.5s
+      setTimeout(() => {
+        console.log('🎲 Fin animation');
+        setIsDiceAnimating(false);
+        setDiceAnimationId(null);
+      }, 1000);
+    }, 100);
   }
 
   return (
@@ -668,22 +798,57 @@ function HomeInner() {
                 <span className="font-semibold">{currentPlayer?.name}</span>
               </div>
             </div>
+            {/* <div className="grid grid-cols-3 gap-3 items-center m-auto w-90">
+                <span className="col-span-1 text-xs uppercase tracking-wide text-neutral-400 font-bold">Dé 1</span>
+                <div className="col-span-1"></div>
+                <span className="col-span-1 text-xs uppercase tracking-wide text-neutral-400 font-bold">Dé 2</span>
 
+            </div> */}
             <div className="grid grid-cols-3 gap-3 items-center">
               <div className="col-span-1 text-center">
-                <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Dé 1</span>
-                <div className="text-3xl font-extrabold mt-1">{dice ? dice[0] : "-"}</div>
+                <div className="flex flex-col justify-center items-center mt-2">
+                <span className="col-span-1 text-xs uppercase tracking-wide text-neutral-400 font-bold mb-3">Dé 1</span>
+                  <AnimatedDice 
+                    value={dice ? dice[0] : null} 
+                    isAnimating={isDiceAnimating}
+                    delay={0}
+                  />
+                </div>
+
+                {/* {isDiceAnimating && (
+                  <div className="text-xs text-purple-600 font-bold mt-1 animate-pulse">
+                    🎲 Animation...
+                  </div>
+                )} */}
               </div>
-              <button
-                className="col-span-1 touch-target rounded-lg bg-purple-600 text-white px-4 py-3 font-bold text-sm hover:bg-purple-700 disabled:opacity-50"
-                onClick={rollDice}
-                disabled={!hasStarted || !localPlayerId || currentPlayer?.id !== localPlayerId}
-              >
-                Lancer les dés
-              </button>
               <div className="col-span-1 text-center">
-                <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Dé 2</span>
-                <div className="text-3xl font-extrabold mt-1">{dice ? dice[1] : "-"}</div>
+                <div className="flex flex-col justify-center items-center mt-2">
+                <span className="col-span-1 text-xs uppercase tracking-wide text-neutral-400 font-bold mb-3">&nbsp;</span>
+                <button
+                className="touch-target rounded-lg bg-purple-600 text-white px-4 py-3 font-bold text-sm hover:bg-purple-700 disabled:opacity-50"
+                onClick={rollDice}
+                disabled={!hasStarted || !localPlayerId || currentPlayer?.id !== localPlayerId || isDiceAnimating}
+                title={diceAnimationId ? `Animation: ${diceAnimationId}` : undefined}
+              >
+                {isDiceAnimating ? "🎲 Lancement..." : "Lancer les dés"}
+              </button>
+                </div>
+              </div>
+              
+              <div className="col-span-1 text-center">
+                <div className="flex flex-col justify-center items-center mt-2">
+                <span className="col-span-1 text-xs uppercase tracking-wide text-neutral-400 font-bold mb-3">Dé 2</span>
+                  <AnimatedDice 
+                    value={dice ? dice[1] : null} 
+                    isAnimating={isDiceAnimating}
+                    delay={50}
+                  />
+                </div>
+                {/* {isDiceAnimating && (
+                  <div className="text-xs text-purple-600 font-bold mt-1 animate-pulse">
+                    🎲 Animation...
+                  </div>
+                )} */}
               </div>
             </div>
 
