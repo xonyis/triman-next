@@ -28,8 +28,20 @@ function pluralizeGorgees(count: number): string {
   return `gorgée${count > 1 ? "s" : ""}`;
 }
 
+function bolding(name: string): string {
+  return `<strong>${name}</strong>`;
+}
+
 // Composant d'animation de dés avec changement de valeurs
-function AnimatedDice({ value, isAnimating, delay = 0 }: { value: number | null; isAnimating: boolean; delay?: number }) {
+function AnimatedDice({ value, isAnimating, delay = 0, istotal, diceIndex, diceValues, phase }: { 
+  value: number | null; 
+  isAnimating: boolean; 
+  delay?: number; 
+  istotal?: boolean;
+  diceIndex?: number;
+  diceValues?: [number, number] | null;
+  phase?: "search" | "play";
+}) {
   const [displayValue, setDisplayValue] = useState<number>(1);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -88,24 +100,76 @@ function AnimatedDice({ value, isAnimating, delay = 0 }: { value: number | null;
     };
   }, [value, isAnimating, delay]);
 
-  return (
+  // Fonction pour déterminer si un dé doit être rouge
+  const shouldBeRed = () => {
+    if (!diceValues || diceIndex === undefined || isAnimating) return false;
+    
+    const [d1, d2] = diceValues;
+    const sum = d1 + d2;
+    
+    // En phase 1 (recherche du Triman) : seuls les 3 deviennent rouges
+    if (phase === "search") {
+      return value === 3 || sum === 3;
+    }
+    
+    // En phase 2 (jeu avec le Triman) : toutes les règles s'appliquent
+    if (phase === "play") {
+      // Règle du 3 : si le dé est un 3 OU si la somme fait 3
+      if (value === 3 || sum === 3) return true;
+      
+      // Double : si les deux dés sont identiques
+      if (d1 === d2) return true;
+      
+      // Règles des sommes spéciales (9, 10, 11)
+      if (sum === 9 || sum === 10 || sum === 11) return true;
+    }
+    
+    return false;
+  };
+
+  const isRed = shouldBeRed();
+
+  // Spécifique à la tuile TOTAL: devient rouge quand la somme déclenche une règle
+  const shouldTotalBeRed = () => {
+    if (!istotal) return false;
+    if (!diceValues || isAnimating) return false;
+    const [d1, d2] = diceValues;
+    const sum = d1 + d2;
+    if (phase === "search") return sum === 3; // phase 1: seulement somme==3
+    if (phase === "play") return sum === 9 || sum === 10 || sum === 11 || sum === 3; // phase 2: 9/10/11 (et 3)
+    return false;
+  };
+  const isTotalRed = shouldTotalBeRed();
+
+  if (!istotal) {return (
     <div 
       className="relative w-16 h-16 bg-white border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center text-2xl font-bold"
       style={{
-        color: isAnimating ? '#1f2937' : '#1f2937',
-        // color: isAnimating
-        //   ? `rgb(${Math.floor(128 + 127 * Math.sin(Date.now() / 200))},${Math.floor(
-        //       128 + 127 * Math.sin(Date.now() / 200 + 2)
-        //     )},${Math.floor(128 + 127 * Math.sin(Date.now() / 200 + 4))})`
-        //   : '#1f2937',
-        transition: 'color 0.3s ease'
+        backgroundColor: isRed ? '#fef2f2' : 'white',
+        borderColor: isRed ? '#7e22ce' : '#d1d5db',
+        color: isRed ? '#7e22ce' : '#1f2937',
+        transition: 'all 0.3s ease'
       }}
     >
       <div className="text-3xl font-extrabold">
         {displayValue}
       </div>
     </div>
-  );
+  );} else {return (
+    <div 
+      className="relative w-16 h-16 bg-white border-2 border-gray-300 rounded-lg shadow-lg flex items-center justify-center text-2xl font-bold"
+      style={{
+        backgroundColor: isTotalRed ? '#fef2f2' : 'white',
+        borderColor: isTotalRed ? '#7e22ce' : '#d1d5db',
+        color: isTotalRed ? '#7e22ce' : '#1f2937',
+        transition: 'all 0.3s ease'
+      }}
+    >
+      <div className="text-3xl font-extrabold">
+        {displayValue}
+      </div>
+    </div>
+  )}
 }
 
 function HomeInner() {
@@ -422,23 +486,23 @@ function HomeInner() {
     if (d2 === 3) threeRuleCount += 1;
     if (sum === 3) threeRuleCount += 1;
     if (threeRuleCount > 0) {
-      outcomes.push(`${triman.name} boit ${threeRuleCount} ${pluralizeGorgees(threeRuleCount)} (règle du 3).`);
+      outcomes.push(`${bolding(triman.name)} boit ${threeRuleCount} ${pluralizeGorgees(threeRuleCount)} (règle du 3).`);
     }
 
     if (d1 === d2) {
-      outcomes.push(`${currentPlayer.name} distribue ${d1} ${pluralizeGorgees(d1)} (double ${d1}).`);
+      outcomes.push(`${bolding(currentPlayer.name)} distribue ${d1} ${pluralizeGorgees(d1)} (double ${d1}).`);
     }
 
     if (sum === 9) {
       const leftIndex = (currentIndex - 1 + totalPlayers) % totalPlayers;
-      outcomes.push(`${players[leftIndex].name} boit 1 ${pluralizeGorgees(1)} (règle du 9).`);
+      outcomes.push(`${bolding(players[leftIndex].name)} boit 1 ${pluralizeGorgees(1)} (règle du 9).`);
     }
     if (sum === 10) {
-      outcomes.push(`${currentPlayer.name} boit 1 ${pluralizeGorgees(1)} (règle du 10).`);
+      outcomes.push(`${bolding(currentPlayer.name)} boit 1 ${pluralizeGorgees(1)} (règle du 10).`);
     }
     if (sum === 11) {
       const rightIndex = (currentIndex + 1) % totalPlayers;
-      outcomes.push(`${players[rightIndex].name} boit 1 ${pluralizeGorgees(1)} (règle du 11).`);
+      outcomes.push(`${bolding(players[rightIndex].name)} boit 1 ${pluralizeGorgees(1)} (règle du 11).`);
     }
 
     return outcomes.length > 0 ? outcomes : ["Aucune règle ne s'applique."];
@@ -451,16 +515,20 @@ function HomeInner() {
       const foundTriman = d1 === 3 || d2 === 3 || d1 + d2 === 3;
       if (foundTriman) {
         if (!currentPlayer) return; // guard
-        const newMessages = [`${currentPlayer.name} devient Triman et boit 1 ${pluralizeGorgees(1)}.`];
+        const newMessages = [`${bolding(currentPlayer.name)} devient Triman et boit 1 ${pluralizeGorgees(1)}.`];
         const tIndex = currentIndex;
         const n = players.length;
         const order = computeRoundOrderForTriman(tIndex, n);
-        setTrimanIndex(tIndex);
-        setPhase("play");
-        setRoundOrder(order);
-        setRoundCursor(0);
-        setMessages(newMessages);
-        setCurrentIndex(order[0]);
+        
+        // Attendre la fin de l'animation pour révéler le Triman
+        setTimeout(() => {
+          setTrimanIndex(tIndex);
+          setPhase("play");
+          setRoundOrder(order);
+          setRoundCursor(0);
+          setMessages(newMessages);
+          setCurrentIndex(order[0]);
+        }, 1000); // Attendre la fin de l'animation (1s)
       } else {
         setMessages(["Pas de 3 → on passe au joueur suivant."]);
         setCurrentIndex((prev) => (prev + 1) % players.length);
@@ -784,18 +852,87 @@ function HomeInner() {
           </section>
         ) : (
           <section className="rounded-xl border border-black/10 dark:border-white/10 bg-white/70 dark:bg-white/5 backdrop-blur p-4 sm:p-5 flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex flex-col">
-                <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Phase</span>
-                <span className="font-semibold">{phase === "search" ? "Phase 1 · Recherche du Triman" : "Phase 2 · Jeu avec le Triman"}</span>
+            <div className="flex flex-col"> 
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex flex-col">
+                  <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Phase</span>
+                  <span className="font-semibold">{phase === "search" ? "Phase 1 · Recherche du Triman" : "Phase 2 · Jeu avec le Triman"}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Triman</span>
+                  <span className="font-semibold">{triman ? triman.name : "À trouver"}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Joueur actuel</span>
+                  <span className="font-semibold">{currentPlayer?.name}</span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Triman</span>
-                <span className="font-semibold">{triman ? triman.name : "À trouver"}</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Joueur actuel</span>
-                <span className="font-semibold">{currentPlayer?.name}</span>
+              <div className="grid grid-cols-3 gap-3 items-end">
+                  <div className="col-span-1 text-center">
+                    <div className="flex flex-col items-center mt-2">
+                    <span className="col-span-1 text-xs uppercase tracking-wide text-neutral-400 font-bold mb-3">Dé 1</span>
+                     <AnimatedDice 
+                       value={dice ? dice[0] : null} 
+                       isAnimating={isDiceAnimating}
+                       delay={0}
+                       diceIndex={0}
+                       diceValues={dice}
+                       phase={phase}
+                     />
+                    </div>
+  
+                    {/* {isDiceAnimating && (
+                      <div className="text-xs text-purple-600 font-bold mt-1 animate-pulse">
+                        🎲 Animation...
+                      </div>
+                    )} */}
+                  </div>
+                  <div className="col-span-1 text-center">
+                    <div className="flex flex-col justify-center items-center mt-2">
+                    <span className="col-span-1 text-xs uppercase tracking-wide text-neutral-400 font-bold mb-3">Total</span>
+                    <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 border-2 border-purple-300 rounded-lg shadow-lg flex items-center justify-center">
+                      <div className="text-3xl font-extrabold text-purple-700">
+                        <span className="text-purple-700">
+                          <AnimatedDice 
+                            value={dice ? dice[0] + dice[1] : null} 
+                            isAnimating={isDiceAnimating}
+                            istotal={true}
+                            delay={100}
+                            diceValues={dice}
+                            phase={phase}
+                          />
+                        </span>
+                      </div>
+                    </div>
+                      <button
+                        className="touch-target rounded-lg bg-purple-600 text-white px-4 py-3 font-bold text-sm hover:bg-purple-700 disabled:opacity-50 mt-3"
+                        onClick={rollDice}
+                        disabled={!hasStarted || !localPlayerId || currentPlayer?.id !== localPlayerId || isDiceAnimating}
+                        title={diceAnimationId ? `Animation: ${diceAnimationId}` : undefined}
+                      >
+                        {isDiceAnimating ? "🎲 Lancement..." : "Lancer les dés"}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="col-span-1 text-center">
+                    <div className="flex flex-col justify-center items-center mt-2">
+                    <span className="col-span-1 text-xs uppercase tracking-wide text-neutral-400 font-bold mb-3">Dé 2</span>
+                     <AnimatedDice 
+                       value={dice ? dice[1] : null} 
+                       isAnimating={isDiceAnimating}
+                       delay={50}
+                       diceIndex={1}
+                       diceValues={dice}
+                       phase={phase}
+                     />
+                    </div>
+                    {/* {isDiceAnimating && (
+                      <div className="text-xs text-purple-600 font-bold mt-1 animate-pulse">
+                        🎲 Animation...
+                      </div>
+                    )} */}
+                  </div>
               </div>
             </div>
             {/* <div className="grid grid-cols-3 gap-3 items-center m-auto w-90">
@@ -804,61 +941,22 @@ function HomeInner() {
                 <span className="col-span-1 text-xs uppercase tracking-wide text-neutral-400 font-bold">Dé 2</span>
 
             </div> */}
-            <div className="grid grid-cols-3 gap-3 items-center">
-              <div className="col-span-1 text-center">
-                <div className="flex flex-col justify-center items-center mt-2">
-                <span className="col-span-1 text-xs uppercase tracking-wide text-neutral-400 font-bold mb-3">Dé 1</span>
-                  <AnimatedDice 
-                    value={dice ? dice[0] : null} 
-                    isAnimating={isDiceAnimating}
-                    delay={0}
-                  />
-                </div>
-
-                {/* {isDiceAnimating && (
-                  <div className="text-xs text-purple-600 font-bold mt-1 animate-pulse">
-                    🎲 Animation...
-                  </div>
-                )} */}
-              </div>
-              <div className="col-span-1 text-center">
-                <div className="flex flex-col justify-center items-center mt-2">
-                <span className="col-span-1 text-xs uppercase tracking-wide text-neutral-400 font-bold mb-3">&nbsp;</span>
-                <button
-                className="touch-target rounded-lg bg-purple-600 text-white px-4 py-3 font-bold text-sm hover:bg-purple-700 disabled:opacity-50"
-                onClick={rollDice}
-                disabled={!hasStarted || !localPlayerId || currentPlayer?.id !== localPlayerId || isDiceAnimating}
-                title={diceAnimationId ? `Animation: ${diceAnimationId}` : undefined}
-              >
-                {isDiceAnimating ? "🎲 Lancement..." : "Lancer les dés"}
-              </button>
-                </div>
-              </div>
               
-              <div className="col-span-1 text-center">
-                <div className="flex flex-col justify-center items-center mt-2">
-                <span className="col-span-1 text-xs uppercase tracking-wide text-neutral-400 font-bold mb-3">Dé 2</span>
-                  <AnimatedDice 
-                    value={dice ? dice[1] : null} 
-                    isAnimating={isDiceAnimating}
-                    delay={50}
-                  />
-                </div>
-                {/* {isDiceAnimating && (
-                  <div className="text-xs text-purple-600 font-bold mt-1 animate-pulse">
-                    🎲 Animation...
-                  </div>
-                )} */}
-              </div>
-            </div>
 
             <div className="glass-card p-3">
               <h3 className="text-sm font-semibold mb-2">Résultat</h3>
-              <ul className="list-disc pl-5 text-sm flex flex-col gap-1">
-                {messages.map((m, i) => (
-                  <li key={i}>{m}</li>
-                ))}
-              </ul>
+              {isDiceAnimating && (
+                <div className="text-sm text-purple-400 font-bold mt-1 animate-pulse">
+                  🎲 Animation...
+                </div>
+              )}
+              { !isDiceAnimating && (
+                <ul className="list-disc pl-5 text-sm flex flex-col gap-1">
+                  {messages.map((m, i) => (
+                    <li key={i} dangerouslySetInnerHTML={{ __html: m }} />
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="glass-card p-3">
@@ -867,6 +965,7 @@ function HomeInner() {
                 {players.map((p, idx) => {
                   const isCurrent = idx === currentIndex;
                   const isTriman = trimanIndex === idx;
+                  
                   return (
                     <li
                       key={p.id}
@@ -876,6 +975,7 @@ function HomeInner() {
                       {p.name}
                     </li>
                   );
+                  
                 })}
               </ul>
             </div>
