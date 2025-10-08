@@ -860,11 +860,15 @@ function HomeInner() {
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Triman</span>
-                  <span className="font-semibold">{triman ? triman.name : "À trouver"}</span>
+                  <span className="font-semibold">
+                    {phase === "search" && isDiceAnimating ? "À trouver" : triman ? triman.name : "À trouver"}
+                  </span>
                 </div>
                 <div className="flex flex-col">
                   <span className="text-xs uppercase tracking-wide text-neutral-400 font-bold">Joueur actuel</span>
-                  <span className="font-semibold">{currentPlayer?.name}</span>
+                  <span className="font-semibold">
+                    {isDiceAnimating ? "..." : currentPlayer?.name}
+                  </span>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3 items-end">
