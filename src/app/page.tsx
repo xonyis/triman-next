@@ -530,8 +530,11 @@ function HomeInner() {
           setCurrentIndex(order[0]);
         }, 1000); // Attendre la fin de l'animation (1s)
       } else {
-        setMessages(["Pas de 3 → on passe au joueur suivant."]);
-        setCurrentIndex((prev) => (prev + 1) % players.length);
+        // Attendre la fin de l'animation avant d'afficher le message et passer au joueur suivant
+        setTimeout(() => {
+          setMessages(["Pas de 3 → on passe au joueur suivant."]);
+          setCurrentIndex((prev) => (prev + 1) % players.length);
+        }, 1000);
       }
       return;
     }
@@ -542,20 +545,23 @@ function HomeInner() {
 
       const noAction = newMessages.length === 1 && newMessages[0] === "Aucune règle ne s'applique.";
       if (noAction) {
-        const nextCursor = roundCursor + 1;
-        if (nextCursor < roundOrder.length) {
-          setRoundCursor(nextCursor);
-          setCurrentIndex(roundOrder[nextCursor]);
-        } else {
-          const lastTrimanIndex = trimanIndex ?? 0;
-          const n = players.length;
-          const nextStart = (lastTrimanIndex + 1) % n;
-          setTrimanIndex(null);
-          setPhase("search");
-          setRoundOrder([]);
-          setRoundCursor(0);
-          setCurrentIndex(nextStart);
-        }
+        // Attendre la fin de l'animation avant de changer de joueur
+        setTimeout(() => {
+          const nextCursor = roundCursor + 1;
+          if (nextCursor < roundOrder.length) {
+            setRoundCursor(nextCursor);
+            setCurrentIndex(roundOrder[nextCursor]);
+          } else {
+            const lastTrimanIndex = trimanIndex ?? 0;
+            const n = players.length;
+            const nextStart = (lastTrimanIndex + 1) % n;
+            setTrimanIndex(null);
+            setPhase("search");
+            setRoundOrder([]);
+            setRoundCursor(0);
+            setCurrentIndex(nextStart);
+          }
+        }, 1000); // Attendre la fin de l'animation (1s)
       } else {
         // Il y a une action → le joueur actuel rejoue, on ne change pas d'index ni de curseur
       }
